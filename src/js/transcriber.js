@@ -1,7 +1,7 @@
 /**
  * transcriber.js — Whisper-based audio transcription using transformers.js v3
- * Uses onnx-community/whisper-tiny.en with chunk-level timestamps,
- * then approximates word-level timing from chunks.
+ * Uses onnx-community/whisper-base.en for better accuracy,
+ * with chunk-level timestamps + improved word-level approximation.
  */
 import { pipeline } from '@huggingface/transformers';
 import { extractAudioForWhisper } from './audio-extractor.js';
@@ -9,7 +9,7 @@ import { extractAudioForWhisper } from './audio-extractor.js';
 let transcriber = null;
 
 /**
- * Transcribe a video file using Whisper (tiny.en model)
+ * Transcribe a video file using Whisper (base.en model — 2x more accurate than tiny)
  * @param {File} videoFile
  * @param {Function} onProgress - (stage, percent, message)
  * @returns {Promise<{ text: string, chunks: Array<{ text: string, timestamp: [number, number] }> }>}
@@ -23,12 +23,12 @@ export async function transcribeVideo(videoFile, onProgress) {
     });
     onProgress('extract', 100, 'Audio extracted ✓');
 
-    // Phase 2: Load Whisper model
+    // Phase 2: Load Whisper model (base.en = much better accuracy than tiny.en)
     onProgress('model', 0, 'Loading Whisper AI model (first time may take a moment)...');
     if (!transcriber) {
       transcriber = await pipeline(
         'automatic-speech-recognition',
-        'onnx-community/whisper-tiny.en',
+        'onnx-community/whisper-base.en',
         {
           dtype: 'fp32',
           device: 'wasm',
@@ -42,26 +42,61 @@ export async function transcribeVideo(videoFile, onProgress) {
     }
     onProgress('model', 100, 'Whisper model loaded ✓');
 
-    // Phase 3: Transcribe with chunk-level timestamps
+    // Phase 3: Transcribe with word-level timestamps first, fall back to chunk-level
     onProgress('transcribe', 0, 'Transcribing audio...');
     const audioUrl = URL.createObjectURL(audioBlob);
 
-    const result = await transcriber(audioUrl, {
-      return_timestamps: true,  // chunk-level (no cross-attention needed)
-      chunk_length_s: 30,
-      stride_length_s: 5,
-    });
+    let wordChunks;
+
+    // Try word-level timestamps first (most accurate)
+    try {
+      const result = await transcriber(audioUrl, {
+        return_timestamps: 'word',
+        chunk_length_s: 30,
+        stride_length_s: 5,
+      });
+
+      // Check if we got proper word-level timestamps
+      if (result.chunks && result.chunks.length > 0 && result.chunks[0].timestamp) {
+        wordChunks = result.chunks
+          .filter(c => c.text && c.text.trim())
+          .map(c => ({
+            text: c.text.trim(),
+            timestamp: [
+              Math.round((c.timestamp[0] ?? 0) * 100) / 100,
+              Math.round((c.timestamp[1] ?? 0) * 100) / 100,
+            ],
+          }));
+
+        if (wordChunks.length > 0) {
+          onProgress('transcribe', 80, `Word-level timestamps ✓ (${wordChunks.length} words)`);
+        }
+      }
+    } catch (wordErr) {
+      console.warn('Word-level timestamps not available, falling back to chunk-level:', wordErr.message);
+    }
+
+    // Fallback: chunk-level timestamps with word approximation
+    if (!wordChunks || wordChunks.length === 0) {
+      onProgress('transcribe', 40, 'Using chunk-level timestamps...');
+      const result = await transcriber(audioUrl, {
+        return_timestamps: true,
+        chunk_length_s: 30,
+        stride_length_s: 5,
+      });
+
+      wordChunks = chunksToWords(result.chunks || []);
+    }
 
     URL.revokeObjectURL(audioUrl);
 
-    // Phase 4: Convert chunk-level to approximate word-level timestamps
-    onProgress('transcribe', 80, 'Processing word timestamps...');
-    const wordChunks = chunksToWords(result.chunks || []);
-
     onProgress('transcribe', 100, `Transcription complete ✓ (${wordChunks.length} words)`);
 
+    // Build full text
+    const fullText = wordChunks.map(c => c.text).join(' ');
+
     return {
-      text: result.text || '',
+      text: fullText,
       chunks: wordChunks,
     };
   } catch (err) {
@@ -72,8 +107,7 @@ export async function transcribeVideo(videoFile, onProgress) {
 
 /**
  * Convert chunk-level timestamps to approximate word-level timestamps.
- * Each chunk has text like "Hello world, this is a test" with [start, end].
- * We split by words and distribute time evenly within each chunk.
+ * Distributes time proportionally by character count with small gaps between words.
  * @param {Array<{ text: string, timestamp: [number, number] }>} chunks
  * @returns {Array<{ text: string, timestamp: [number, number] }>}
  */
@@ -92,11 +126,17 @@ function chunksToWords(chunks) {
     if (words.length === 0) continue;
 
     // Distribute time proportionally by word length (longer words ≈ more time)
-    const totalChars = words.reduce((sum, w) => sum + w.length, 0);
+    const totalChars = words.reduce((sum, w) => sum + Math.max(w.length, 1), 0);
+    // Small gap between words (5% of average word duration)
+    const avgWordDuration = duration / words.length;
+    const wordGap = Math.min(0.05, avgWordDuration * 0.05);
+    const usableDuration = duration - (wordGap * (words.length - 1));
+
     let currentTime = start;
 
-    for (const word of words) {
-      const wordDuration = (word.length / totalChars) * duration;
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      const wordDuration = (Math.max(word.length, 1) / totalChars) * usableDuration;
       const wordStart = currentTime;
       const wordEnd = currentTime + wordDuration;
 
@@ -108,7 +148,7 @@ function chunksToWords(chunks) {
         ],
       });
 
-      currentTime = wordEnd;
+      currentTime = wordEnd + wordGap;
     }
   }
 
