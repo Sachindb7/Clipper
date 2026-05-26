@@ -100,13 +100,13 @@ export async function analyzeTranscript(transcript, apiKey) {
             role: 'user',
             parts: [
               {
-                text: `${SYSTEM_PROMPT}\n\n--- TRANSCRIPT WITH TIMESTAMPS ---\n${formattedTranscript}\n--- END TRANSCRIPT ---`,
+                text: `${SYSTEM_PROMPT}\n\n--- TRANSCRIPT WITH TIMESTAMPS ---\n${formattedTranscript}\n--- END TRANSCRIPT ---\n\nTotal video duration: ${Math.round(transcript.chunks[transcript.chunks.length - 1]?.timestamp?.[1] || 0)} seconds.\n\nIMPORTANT FINAL REMINDER: You MUST return AT LEAST 3 clips, ideally 4-5. Each clip 6-12 seconds. Return ONLY a JSON array. Do NOT return just 1 or 2 clips.`,
               },
             ],
           },
         ],
         generationConfig: {
-          temperature: 0.8,
+          temperature: 0.4,
           topP: 0.95,
           maxOutputTokens: 4096,
           responseMimeType: 'application/json',
@@ -171,13 +171,33 @@ function formatTranscriptForGemini(transcript) {
     return transcript.text || '';
   }
 
-  return transcript.chunks
-    .map((chunk) => {
-      const start = chunk.timestamp?.[0] ?? 0;
-      const end = chunk.timestamp?.[1] ?? start;
-      return `[${start.toFixed(2)}s - ${end.toFixed(2)}s] ${chunk.text}`;
-    })
-    .join('\n');
+  // Group words into sentence-like lines (~10 words each) so Gemini sees coherent context
+  const lines = [];
+  let currentWords = [];
+  let lineStart = transcript.chunks[0]?.timestamp?.[0] ?? 0;
+
+  for (let i = 0; i < transcript.chunks.length; i++) {
+    const chunk = transcript.chunks[i];
+    const word = chunk.text?.trim();
+    if (!word) continue;
+
+    currentWords.push(word);
+
+    // Cut at sentence enders, or every ~10 words
+    const isSentenceEnd = /[.!?]$/.test(word);
+    const isLongEnough = currentWords.length >= 10;
+    const isLast = i === transcript.chunks.length - 1;
+
+    if (isSentenceEnd || isLongEnough || isLast) {
+      const lineEnd = chunk.timestamp?.[1] ?? lineStart;
+      const text = currentWords.join(' ');
+      lines.push(`[${lineStart.toFixed(1)}s - ${lineEnd.toFixed(1)}s] ${text}`);
+      currentWords = [];
+      lineStart = transcript.chunks[i + 1]?.timestamp?.[0] ?? lineEnd;
+    }
+  }
+
+  return lines.join('\n');
 }
 
 function parseJsonFromResponse(text) {
