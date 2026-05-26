@@ -171,7 +171,7 @@ export class Composer {
   _drawCaptions(wordChunks, currentTime) {
     const ctx = this.ctx;
     const w = this.width;
-    const y = this.videoY + this.videoHeight - 80; // Overlapping the video at the bottom
+    const y = this.videoY + this.videoHeight - 80;
 
     // Find current word index
     let currentWordIdx = -1;
@@ -195,8 +195,8 @@ export class Composer {
 
     if (currentWordIdx === -1) return;
 
-    // Group words into fixed chunks of 5 so the text doesn't slide awkwardly
-    const groupSize = 5;
+    // Group words into fixed chunks of 4 so the text doesn't slide awkwardly
+    const groupSize = 4;
     const groupIndex = Math.floor(currentWordIdx / groupSize);
     const windowStart = groupIndex * groupSize;
     const windowEnd = Math.min(wordChunks.length - 1, windowStart + groupSize - 1);
@@ -213,75 +213,74 @@ export class Composer {
     if (visibleWords.length === 0) return;
 
     ctx.save();
-    ctx.textAlign = 'center';
+
+    // Use ONE font for all measurement to avoid size mismatch
+    const font = `800 ${this.captionFontSize}px Montserrat, sans-serif`;
+    ctx.font = font;
     ctx.textBaseline = 'middle';
 
-    // Measure total text width
-    const normalFont = `700 ${this.captionFontSize}px Montserrat, sans-serif`;
-    const highlightFont = `900 ${this.captionHighlightSize}px Montserrat, sans-serif`;
-    ctx.font = normalFont;
+    // Fixed space between words
+    const wordGap = Math.round(this.captionFontSize * 0.4);
 
-    // Build text segments with measurements
+    // Measure each word width individually (without trailing space)
     const segments = [];
     let totalWidth = 0;
-    for (const word of visibleWords) {
-      ctx.font = word.isCurrent ? highlightFont : normalFont;
-      const measured = ctx.measureText(word.text + ' ');
+    for (let i = 0; i < visibleWords.length; i++) {
+      const wordWidth = ctx.measureText(visibleWords[i].text).width;
       segments.push({
-        text: word.text,
-        width: measured.width,
-        isCurrent: word.isCurrent,
+        text: visibleWords[i].text,
+        width: wordWidth,
+        isCurrent: visibleWords[i].isCurrent,
       });
-      totalWidth += measured.width;
+      totalWidth += wordWidth;
+      if (i < visibleWords.length - 1) {
+        totalWidth += wordGap; // Add gap between words (not after last)
+      }
     }
 
-    // Cap at max width
-    const maxWidth = w - 60;
+    // Scale down if too wide
+    const maxWidth = w - 80;
     const scale = totalWidth > maxWidth ? maxWidth / totalWidth : 1;
+    const scaledTotal = totalWidth * scale;
+    const scaledGap = wordGap * scale;
 
     // Background pill
-    const pillPad = 14;
-    const pillW = Math.min(totalWidth, maxWidth) + pillPad * 2;
-    const pillH = this.captionHighlightSize + pillPad * 2;
+    const pillPad = 16;
+    const pillW = scaledTotal + pillPad * 2;
+    const pillH = this.captionFontSize + pillPad * 2.5;
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     this._roundRect((w - pillW) / 2, y - pillH / 2, pillW, pillH, 14);
     ctx.fill();
 
-    // Draw words
-    let x = (w - Math.min(totalWidth, maxWidth)) / 2;
-    for (const seg of segments) {
+    // Draw words left-to-right
+    let x = (w - scaledTotal) / 2;
+    ctx.font = font;
+    ctx.textAlign = 'left';
+
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
       const segW = seg.width * scale;
 
+      // Outline (always black)
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+      ctx.lineWidth = 6;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(seg.text, x, y);
+
+      // Fill color — highlight current word
       if (seg.isCurrent) {
-        ctx.font = highlightFont;
-
-        // Outline
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
-        ctx.lineWidth = 6;
-        ctx.lineJoin = 'round';
-        ctx.textAlign = 'left';
-        ctx.strokeText(seg.text, x, y);
-
-        // Highlighted fill
         ctx.fillStyle = '#FFD700';
-        ctx.fillText(seg.text, x, y);
       } else {
-        ctx.font = normalFont;
-
-        // Outline
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
-        ctx.lineWidth = 5;
-        ctx.lineJoin = 'round';
-        ctx.textAlign = 'left';
-        ctx.strokeText(seg.text, x, y);
-
-        // White fill
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(seg.text, x, y);
       }
+      ctx.fillText(seg.text, x, y);
 
+      // Advance x by word width + gap
       x += segW;
+      if (i < segments.length - 1) {
+        x += scaledGap;
+      }
     }
 
     ctx.restore();
