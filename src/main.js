@@ -9,6 +9,7 @@ import { analyzeTranscript } from './js/gemini-analyzer.js';
 import { splitTranscript } from './js/splitter.js';
 import { Composer } from './js/composer.js';
 import { exportClip, downloadBlob } from './js/exporter.js';
+import defaultLogoUrl from './assets/default-logo.png';
 
 // ============ State ============
 const state = {
@@ -116,14 +117,14 @@ async function loadLogo() {
   try {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = '/src/assets/default-logo.png';
+    img.src = defaultLogoUrl; // Vite-resolved asset path
     await new Promise((resolve, reject) => {
       img.onload = resolve;
       img.onerror = reject;
     });
     state.logoImage = img;
   } catch {
-    console.warn('Could not load logo image');
+    console.warn('Could not load default logo — user can set one manually');
   }
 }
 
@@ -165,6 +166,24 @@ async function onVideoSelected({ file, duration }) {
       if (geminiClips && geminiClips.length > 0) {
         state.clips = geminiClips;
         log(`✅ Gemini found ${geminiClips.length} viral moments!`, 'success');
+
+        // If Gemini returned fewer than 3, supplement with splitter clips
+        if (geminiClips.length < 3) {
+          log('📋 Supplementing with splitter clips to reach minimum 3...', 'info');
+          const splitterClips = splitTranscript(state.transcript.chunks, state.videoDuration, 5);
+          // Add splitter clips that don't overlap with Gemini clips
+          for (const sc of splitterClips) {
+            const overlaps = state.clips.some(gc =>
+              (sc.start_time < gc.end_time && sc.end_time > gc.start_time)
+            );
+            if (!overlaps) {
+              state.clips.push(sc);
+            }
+            if (state.clips.length >= 4) break;
+          }
+          state.clips.sort((a, b) => a.start_time - b.start_time);
+          log(`📋 Total clips after supplementing: ${state.clips.length}`, 'info');
+        }
         setStepProgress('analyze', 100);
       } else {
         log('⚠️ Gemini returned no results, using fallback splitter...', 'info');
@@ -183,7 +202,12 @@ async function onVideoSelected({ file, duration }) {
     // Step 3: Compose previews
     activateStep('compose');
     log('🎬 Generating preview compositions...');
-    await buildPreviews();
+    try {
+      await buildPreviews();
+    } catch (err) {
+      console.error('Preview build error:', err);
+      log(`⚠️ Preview generation had issues: ${err.message}`, 'info');
+    }
     completeStep('compose');
     log('✅ Previews ready!', 'success');
 

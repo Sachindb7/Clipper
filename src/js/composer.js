@@ -373,12 +373,33 @@ export class Composer {
    */
   renderStaticFrame(videoElement, clip, wordChunks, time) {
     return new Promise((resolve) => {
-      videoElement.currentTime = time;
-      videoElement.onseeked = () => {
-        this.renderFrame(videoElement, time, clip, wordChunks);
-        videoElement.onseeked = null;
+      let resolved = false;
+      const done = () => {
+        if (resolved) return;
+        resolved = true;
+        try {
+          this.renderFrame(videoElement, time, clip, wordChunks);
+        } catch (err) {
+          console.warn('renderFrame error:', err);
+        }
         resolve();
       };
+
+      // If already at the right time, render immediately
+      if (Math.abs(videoElement.currentTime - time) < 0.1 && videoElement.readyState >= 2) {
+        done();
+        return;
+      }
+
+      const onSeeked = () => {
+        videoElement.removeEventListener('seeked', onSeeked);
+        done();
+      };
+      videoElement.addEventListener('seeked', onSeeked);
+      videoElement.currentTime = time;
+
+      // Timeout fallback — if seeked never fires, render anyway after 2s
+      setTimeout(done, 2000);
     });
   }
 }

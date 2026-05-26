@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "vite-plugin-singlefile": "^2.3.3"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
