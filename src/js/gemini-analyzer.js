@@ -239,21 +239,23 @@ export async function analyzeTranscript(transcript, apiKey, onLog, hookStyle = '
     let hookStyleInstruction = '';
     if (hookStyle === 'multi') {
       hookStyleInstruction = `
-HOOK FORMAT: ALL hooks must be MULTI-LINE (2 lines). Use "\\n" to separate lines.
-Line 1: Short punchy intro (2-4 words + emoji)
-Line 2: The emotional/curiosity payoff (2-5 words + emoji)
-Example: "Nobody was ready\\n💔 This hit different"
-Example: "Wait for it 👀\\nThis changes everything 🔥"`;
+HOOK FORMAT: ALL hooks must be LONGER sentences (8-15 words + emojis) that naturally fill 2 lines when displayed.
+These are NOT 2 separate sentences — they are ONE longer flowing sentence.
+Example: "Nobody was ready for what he just said on stream 🤯🔥"
+Example: "This is exactly why people don't trust anyone anymore 💔😭"
+Example: "He really went and said the one thing nobody wanted to hear 🫢💀"
+Do NOT use \\n. Just write one long sentence.`;
     } else if (hookStyle === 'both') {
       hookStyleInstruction = `
-HOOK FORMAT: Use a MIX of single-line and multi-line hooks. 
-- Make 2 clips with MULTI-LINE hooks (2 lines, use "\\n" to separate).
-- Make the remaining clips with SINGLE-LINE hooks.
-Multi-line example: "Nobody expected this 👀\\n💔 It hit different"
-Single-line example: "This is actually insane 🤯🔥"`;
+HOOK FORMAT: Use a MIX of short and long hooks.
+- Make 2 clips with LONGER hooks (8-15 words, one flowing sentence that fills 2 lines)
+- Make the remaining clips with SHORT hooks (3-7 words, fits in 1 line)
+Long example: "Nobody was ready for what he just said on stream 🤯🔥"
+Short example: "This is actually insane 🤯🔥"
+Do NOT use \\n. Just write naturally.`;
     } else {
       hookStyleInstruction = `
-HOOK FORMAT: ALL hooks must be SINGLE LINE. Keep each hook on one line, 3-7 words max.`;
+HOOK FORMAT: ALL hooks must be SHORT (3-7 words + emojis). Fits in a single line.`;
     }
 
     const userPrompt = `${SYSTEM_PROMPT}

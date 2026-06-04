@@ -135,18 +135,34 @@ export class Composer {
   _drawHookText(text) {
     const ctx = this.ctx;
     const w = this.width;
-    const maxWidth = w - 80;
-
-    // Support multi-line hooks (split by \n)
-    const lines = text.split('\\n').map(l => l.trim()).filter(Boolean);
-    if (lines.length === 0) return;
+    const maxWidth = w - 100;
 
     ctx.save();
     ctx.font = `800 ${this.hookFontSize}px Montserrat, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const lineHeight = this.hookFontSize * 1.35;
+    // Word-wrap: break text into lines that fit maxWidth
+    const words = text.split(/\s+/);
+    const lines = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine ? currentLine + ' ' + word : word;
+      const testWidth = ctx.measureText(testLine).width;
+
+      if (testWidth > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+
+    if (lines.length === 0) { ctx.restore(); return; }
+
+    const lineHeight = this.hookFontSize * 1.4;
     const totalTextHeight = lines.length * lineHeight;
     const pillPad = 16;
 
@@ -156,11 +172,10 @@ export class Composer {
       const lw = ctx.measureText(line).width;
       if (lw > maxLineWidth) maxLineWidth = lw;
     }
-    const textW = Math.min(maxLineWidth, maxWidth);
 
     // Position: above the video
     const pillH = totalTextHeight + pillPad * 2;
-    const pillW = textW + pillPad * 3;
+    const pillW = Math.min(maxLineWidth, maxWidth) + pillPad * 3;
     const pillCenterY = this.videoY - 20 - pillH / 2;
     const pillX = (w - pillW) / 2;
     const pillY = pillCenterY - pillH / 2;
@@ -175,15 +190,13 @@ export class Composer {
     for (let i = 0; i < lines.length; i++) {
       const lineY = startY + i * lineHeight;
 
-      // Outline
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
       ctx.lineWidth = 4;
       ctx.lineJoin = 'round';
-      ctx.strokeText(lines[i], w / 2, lineY, maxWidth);
+      ctx.strokeText(lines[i], w / 2, lineY);
 
-      // Fill
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(lines[i], w / 2, lineY, maxWidth);
+      ctx.fillText(lines[i], w / 2, lineY);
     }
 
     ctx.restore();
