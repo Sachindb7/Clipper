@@ -23,6 +23,8 @@ const state = {
   resolution: 1080, // 1080 or 720
   apiKey: localStorage.getItem('clipper_gemini_key') || '',
   logoImage: null,
+  noLogo: false,
+  hookStyle: 'single', // 'single', 'multi', 'both'
 };
 
 // ============ DOM refs ============
@@ -77,6 +79,8 @@ function init() {
   const logoInput = $('logo-input');
   const changeLogoBtn = $('change-logo-btn');
   const logoStatus = $('logo-status');
+  const noLogoBtn = $('no-logo-btn');
+
   if (changeLogoBtn && logoInput) {
     changeLogoBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -90,6 +94,8 @@ function init() {
         const img = new Image();
         img.onload = () => {
           state.logoImage = img;
+          state.noLogo = false;
+          if (noLogoBtn) noLogoBtn.classList.remove('active');
           if (logoStatus) {
             logoStatus.textContent = '✅ ' + file.name;
             logoStatus.classList.add('loaded');
@@ -103,6 +109,45 @@ function init() {
         };
         img.src = url;
       }
+    });
+  }
+
+  // No Logo toggle
+  if (noLogoBtn) {
+    noLogoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      state.noLogo = !state.noLogo;
+      noLogoBtn.classList.toggle('active', state.noLogo);
+      if (state.noLogo) {
+        state.logoImage = null;
+        if (logoStatus) {
+          logoStatus.textContent = '🚫 Logo disabled';
+          logoStatus.classList.remove('loaded');
+        }
+      } else {
+        // Re-load default logo
+        loadLogo();
+        if (logoStatus) {
+          logoStatus.textContent = 'No logo set (optional)';
+          logoStatus.classList.remove('loaded');
+        }
+      }
+      if (state.clips.length > 0) {
+        buildPreviews();
+      }
+    });
+  }
+
+  // Hook Style toggle
+  const hookToggle = $('hook-style-toggle');
+  if (hookToggle) {
+    hookToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.hook-btn');
+      if (!btn) return;
+      hookToggle.querySelectorAll('.hook-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.hookStyle = btn.dataset.hook;
     });
   }
 
@@ -164,7 +209,7 @@ async function onVideoSelected({ file, duration }) {
       const geminiClips = await analyzeTranscript(state.transcript, state.apiKey, (msg) => {
         log(`   ${msg}`);
         setStepStatus('analyze', msg);
-      });
+      }, state.hookStyle);
 
       if (geminiClips && geminiClips.length > 0) {
         state.clips = geminiClips;

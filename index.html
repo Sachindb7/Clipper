@@ -81,8 +81,20 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           Set Logo Banner
         </button>
+        <button class="btn-secondary btn-no-logo" id="no-logo-btn" title="Remove logo from videos">
+          🚫 No Logo
+        </button>
         <span class="logo-status" id="logo-status">No logo set (optional)</span>
         <input type="file" id="logo-input" accept="image/png,image/jpeg,image/webp" hidden />
+      </div>
+      <!-- Hook Style selector -->
+      <div class="hook-style-row" id="hook-style-row">
+        <span class="hook-style-label">Hook Text Style:</span>
+        <div class="hook-style-toggle" id="hook-style-toggle">
+          <button class="hook-btn active" data-hook="single">Single Line</button>
+          <button class="hook-btn" data-hook="multi">Multi-line</button>
+          <button class="hook-btn" data-hook="both">Both</button>
+        </div>
       </div>
     </section>
 

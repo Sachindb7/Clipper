@@ -135,35 +135,56 @@ export class Composer {
   _drawHookText(text) {
     const ctx = this.ctx;
     const w = this.width;
-    const y = this.videoY - 40;
     const maxWidth = w - 80;
+
+    // Support multi-line hooks (split by \n)
+    const lines = text.split('\\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) return;
 
     ctx.save();
     ctx.font = `800 ${this.hookFontSize}px Montserrat, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
+    ctx.textBaseline = 'middle';
+
+    const lineHeight = this.hookFontSize * 1.35;
+    const totalTextHeight = lines.length * lineHeight;
+    const pillPad = 16;
+
+    // Measure widest line
+    let maxLineWidth = 0;
+    for (const line of lines) {
+      const lw = ctx.measureText(line).width;
+      if (lw > maxLineWidth) maxLineWidth = lw;
+    }
+    const textW = Math.min(maxLineWidth, maxWidth);
+
+    // Position: above the video
+    const pillH = totalTextHeight + pillPad * 2;
+    const pillW = textW + pillPad * 3;
+    const pillCenterY = this.videoY - 20 - pillH / 2;
+    const pillX = (w - pillW) / 2;
+    const pillY = pillCenterY - pillH / 2;
 
     // Background pill
-    const metrics = ctx.measureText(text);
-    const textW = Math.min(metrics.width, maxWidth);
-    const pillPad = 16;
-    const pillH = this.hookFontSize + pillPad * 2;
-    const pillW = textW + pillPad * 3;
-    const pillX = (w - pillW) / 2;
-    const pillY = y - this.hookFontSize - pillPad;
-
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     this._roundRect(pillX, pillY, pillW, pillH, 12);
     ctx.fill();
 
-    // Text with outline
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.lineWidth = 4;
-    ctx.lineJoin = 'round';
-    ctx.strokeText(text, w / 2, y, maxWidth);
+    // Draw each line
+    const startY = pillCenterY - (totalTextHeight / 2) + lineHeight / 2;
+    for (let i = 0; i < lines.length; i++) {
+      const lineY = startY + i * lineHeight;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(text, w / 2, y, maxWidth);
+      // Outline
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(lines[i], w / 2, lineY, maxWidth);
+
+      // Fill
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(lines[i], w / 2, lineY, maxWidth);
+    }
 
     ctx.restore();
   }

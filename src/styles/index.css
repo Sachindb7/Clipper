@@ -536,6 +536,75 @@ body {
   color: var(--success);
 }
 
+.btn-no-logo {
+  font-size: 13px !important;
+  padding: 6px 14px !important;
+  border-radius: var(--radius-full) !important;
+  transition: all var(--transition);
+}
+
+.btn-no-logo.active {
+  background: var(--error) !important;
+  border-color: var(--error) !important;
+  color: white !important;
+}
+
+/* ---- Hook Style Selector ---- */
+.hook-style-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition);
+}
+
+.hook-style-row:hover {
+  border-color: var(--border-hover);
+}
+
+.hook-style-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.hook-style-toggle {
+  display: flex;
+  background: var(--bg-primary);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 2px;
+}
+
+.hook-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.hook-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.hook-btn.active {
+  background: var(--gradient);
+  color: white;
+}
+
 /* ---- Processing Pipeline ---- */
 .pipeline {
   display: flex;

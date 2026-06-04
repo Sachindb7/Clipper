@@ -223,7 +223,7 @@ async function callGeminiWithFallback(apiKey, userPrompt, onLog) {
  * @param {Function} [onLog] - optional progress callback
  * @returns {Promise<Array<{ start_time: number, end_time: number, hook_text: string, reason: string }> | null>}
  */
-export async function analyzeTranscript(transcript, apiKey, onLog) {
+export async function analyzeTranscript(transcript, apiKey, onLog, hookStyle = 'single') {
   if (!apiKey || !apiKey.trim()) {
     console.warn('No Gemini API key provided');
     return null;
@@ -235,7 +235,29 @@ export async function analyzeTranscript(transcript, apiKey, onLog) {
       transcript.chunks[transcript.chunks.length - 1]?.timestamp?.[1] || 0
     );
 
+    // Hook style instruction based on user preference
+    let hookStyleInstruction = '';
+    if (hookStyle === 'multi') {
+      hookStyleInstruction = `
+HOOK FORMAT: ALL hooks must be MULTI-LINE (2 lines). Use "\\n" to separate lines.
+Line 1: Short punchy intro (2-4 words + emoji)
+Line 2: The emotional/curiosity payoff (2-5 words + emoji)
+Example: "Nobody was ready\\n💔 This hit different"
+Example: "Wait for it 👀\\nThis changes everything 🔥"`;
+    } else if (hookStyle === 'both') {
+      hookStyleInstruction = `
+HOOK FORMAT: Use a MIX of single-line and multi-line hooks. 
+- Make 2 clips with MULTI-LINE hooks (2 lines, use "\\n" to separate).
+- Make the remaining clips with SINGLE-LINE hooks.
+Multi-line example: "Nobody expected this 👀\\n💔 It hit different"
+Single-line example: "This is actually insane 🤯🔥"`;
+    } else {
+      hookStyleInstruction = `
+HOOK FORMAT: ALL hooks must be SINGLE LINE. Keep each hook on one line, 3-7 words max.`;
+    }
+
     const userPrompt = `${SYSTEM_PROMPT}
+${hookStyleInstruction}
 
 --- TRANSCRIPT WITH TIMESTAMPS ---
 ${formattedTranscript}
