@@ -239,28 +239,26 @@ export async function analyzeTranscript(transcript, apiKey, onLog, hookStyle = '
     let hookStyleInstruction = '';
     if (hookStyle === 'multi') {
       hookStyleInstruction = `
-HOOK FORMAT: ALL hooks must be ONE SINGLE long flowing sentence (8-15 words + emojis).
-The sentence will visually wrap to 2 lines because of its length — that's the point.
-It must be ONE continuous thought, NOT two separate ideas stitched together.
+HOOK FORMAT: ALL hooks must be ONE SINGLE flowing sentence (8-12 words + emojis).
+It wraps to exactly 2 lines visually. ONE continuous thought, NOT two ideas joined.
 
-✅ GOOD (one flowing thought):
-"Nobody was ready for what he just said on stream 🤯🔥"
-"This is exactly why people stopped trusting anyone online 💔😭"  
-"He really went and dropped the one thing nobody wanted to hear 🫢💀"
-"Bro literally fumbled everything in the worst way possible 💀😂"
+✅ GOOD (one flowing thought, 8-12 words):
+"Nobody was ready for what he just said 🤯🔥"
+"This is why people stopped trusting anyone 💔😭"  
+"He really dropped the one thing nobody wanted to hear 🫢💀"
+"Bro fumbled everything in the worst way possible 💀😂"
 
-❌ BAD (two separate sentences jammed together — NEVER do this):
+❌ BAD (two separate sentences — NEVER do this):
 "Blowing 400K? 🤯 This is pure madness 🔥"
 "Watch his reaction 😱 He lost his mind 🔥"
-"The ultimate comeback 🔥 He actually did it 🤯"
 
-Write ONE sentence. Not two. Not a question then a statement.`;
+Write ONE sentence. Max 12 words. Not two sentences joined.`;
     } else if (hookStyle === 'both') {
       hookStyleInstruction = `
-HOOK FORMAT: Use a MIX of short and long hooks across your clips.
-- 2 clips: LONG hook (8-15 words, one single flowing sentence — NOT two sentences joined)
+HOOK FORMAT: MIX of short and long hooks.
+- 2 clips: LONG hook (8-12 words, one flowing sentence — NOT two joined)
 - Remaining clips: SHORT hook (3-7 words)
-Long example: "Nobody was ready for what he just said on stream 🤯🔥"
+Long example: "Nobody was ready for what he just said 🤯🔥"
 Short example: "This is actually insane 🤯🔥"`;
     } else {
       hookStyleInstruction = `

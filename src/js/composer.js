@@ -135,8 +135,8 @@ export class Composer {
   _drawHookText(text) {
     const ctx = this.ctx;
     const w = this.width;
-    // ~60% width so longer hooks wrap naturally to 2 lines
-    const maxWidth = w * 0.6;
+    // ~80% width — wider spread, long hooks wrap to exactly 2 lines
+    const maxWidth = w * 0.8;
 
     ctx.save();
     ctx.font = `800 ${this.hookFontSize}px Montserrat, sans-serif`;
