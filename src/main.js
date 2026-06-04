@@ -157,11 +157,14 @@ async function onVideoSelected({ file, duration }) {
     // Step 2: Analyze with Gemini
     activateStep('analyze');
     if (state.apiKey) {
-      log('🤖 Sending transcript to Gemini 2.5 Flash for viral detection...');
-      setStepStatus('analyze', 'Analyzing with Gemini...');
+      log('🤖 Sending transcript to AI for viral detection...');
+      setStepStatus('analyze', 'Analyzing with AI...');
       setStepProgress('analyze', 30);
 
-      const geminiClips = await analyzeTranscript(state.transcript, state.apiKey);
+      const geminiClips = await analyzeTranscript(state.transcript, state.apiKey, (msg) => {
+        log(`   ${msg}`);
+        setStepStatus('analyze', msg);
+      });
 
       if (geminiClips && geminiClips.length > 0) {
         state.clips = geminiClips;

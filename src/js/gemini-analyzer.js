@@ -1,8 +1,28 @@
 /**
- * gemini-analyzer.js — Gemini 2.5 Flash viral moment detection
+ * gemini-analyzer.js — Gemini viral moment detection with model fallback chain
+ * Tries best models first, falls back to more reliable ones.
  */
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+// ============ Model Fallback Chain ============
+// Tries in order: best → most reliable
+const MODEL_FALLBACK_CHAIN = [
+  'gemini-3.5-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+];
+
+// Codenames for console logs (don't expose model names to users)
+const MODEL_CODENAMES = {
+  'gemini-3.5-flash': 'Engine-A',
+  'gemini-3.1-flash-lite': 'Engine-B',
+  'gemini-2.5-flash': 'Engine-C',
+  'gemini-2.5-flash-lite': 'Engine-D',
+};
+
+const RETRIES_PER_MODEL = 2;
+const RETRY_DELAY_MS = 3000;
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 const SYSTEM_PROMPT = `You are a VIRAL CONTENT GENIUS — the #1 social media strategist in the world. Your job: extract MULTIPLE short clips from a video transcript for Instagram Reels / TikToks / YouTube Shorts.
 
@@ -74,63 +94,143 @@ REMEMBER: MINIMUM 3 CLIPS. SHORT clips (7-9 seconds) are ALWAYS better. Your hoo
 Respond with ONLY a raw JSON array, NO markdown, NO code blocks, NO backticks:
 [{"start_time": 5.2, "end_time": 13.1, "hook_text": "What he said next 😳🔥", "reason": "Strong emotional reaction"}]`;
 
+// ============ Retry Helpers ============
+
+function isRetryableError(error) {
+  const message = (error?.message || error?.toString() || '').toLowerCase();
+  return (
+    message.includes('503') ||
+    message.includes('429') ||
+    message.includes('unavailable') ||
+    message.includes('resource_exhausted') ||
+    message.includes('overloaded') ||
+    message.includes('high demand') ||
+    message.includes('rate limit') ||
+    message.includes('quota') ||
+    message.includes('internal')
+  );
+}
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// ============ Core API Call with Fallback ============
 
 /**
- * Analyze transcript with Gemini 2.5 Flash to find viral moments
+ * Call Gemini API with model fallback chain — tries best models first
+ * @param {string} apiKey
+ * @param {string} userPrompt
+ * @param {Function} [onLog] - optional logging callback
+ * @returns {Promise<string>} Raw response text
+ */
+async function callGeminiWithFallback(apiKey, userPrompt, onLog) {
+  let lastError = null;
+
+  for (const model of MODEL_FALLBACK_CHAIN) {
+    const codename = MODEL_CODENAMES[model] || model;
+
+    for (let attempt = 1; attempt <= RETRIES_PER_MODEL; attempt++) {
+      try {
+        if (onLog) onLog(`🤖 ${codename} (attempt ${attempt}/${RETRIES_PER_MODEL})...`);
+        console.log(`🤖 Trying ${codename} (${attempt}/${RETRIES_PER_MODEL})`);
+
+        const url = `${GEMINI_BASE_URL}/${model}:generateContent?key=${apiKey}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: userPrompt }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.4,
+              topP: 0.95,
+              maxOutputTokens: 4096,
+              responseMimeType: 'application/json',
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+          throw new Error(errMsg);
+        }
+
+        const data = await response.json();
+        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!rawText) {
+          throw new Error('Empty response from model');
+        }
+
+        console.log(`✅ ${codename} succeeded`);
+        if (onLog) onLog(`✅ ${codename} responded!`);
+        return rawText;
+
+      } catch (error) {
+        lastError = error;
+        console.warn(`⚠️ ${codename} attempt ${attempt} failed:`, error.message);
+
+        if (!isRetryableError(error)) {
+          // Non-retryable error (e.g., invalid key, bad request) — skip to next model
+          if (onLog) onLog(`⚠️ ${codename} error, trying next engine...`);
+          break;
+        }
+
+        if (attempt < RETRIES_PER_MODEL) {
+          if (onLog) onLog(`⏳ Retrying in ${RETRY_DELAY_MS / 1000}s...`);
+          await sleep(RETRY_DELAY_MS);
+        }
+      }
+    }
+    console.log(`🔄 Switching from ${codename} to next engine...`);
+  }
+
+  // All models exhausted
+  throw new Error(
+    `All AI engines busy. Please wait 2-3 minutes and try again. Last error: ${lastError?.message}`
+  );
+}
+
+// ============ Main Export ============
+
+/**
+ * Analyze transcript with Gemini to find viral moments
+ * Uses model fallback chain for reliability
  * @param {{ text: string, chunks: Array<{ text: string, timestamp: [number, number] }> }} transcript
  * @param {string} apiKey - Gemini API key
+ * @param {Function} [onLog] - optional progress callback
  * @returns {Promise<Array<{ start_time: number, end_time: number, hook_text: string, reason: string }> | null>}
  */
-export async function analyzeTranscript(transcript, apiKey) {
+export async function analyzeTranscript(transcript, apiKey, onLog) {
   if (!apiKey || !apiKey.trim()) {
     console.warn('No Gemini API key provided');
     return null;
   }
 
   try {
-    // Format transcript with timestamps for Gemini
     const formattedTranscript = formatTranscriptForGemini(transcript);
+    const totalDuration = Math.round(
+      transcript.chunks[transcript.chunks.length - 1]?.timestamp?.[1] || 0
+    );
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text: `${SYSTEM_PROMPT}\n\n--- TRANSCRIPT WITH TIMESTAMPS ---\n${formattedTranscript}\n--- END TRANSCRIPT ---\n\nTotal video duration: ${Math.round(transcript.chunks[transcript.chunks.length - 1]?.timestamp?.[1] || 0)} seconds.\n\nIMPORTANT FINAL REMINDER: You MUST return AT LEAST 3 clips, ideally 4-5. Each clip 6-12 seconds. Return ONLY a JSON array. Do NOT return just 1 or 2 clips.`,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.4,
-          topP: 0.95,
-          maxOutputTokens: 4096,
-          responseMimeType: 'application/json',
-        },
-      }),
-    });
+    const userPrompt = `${SYSTEM_PROMPT}
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      console.error('Gemini API error:', response.status, errData);
-      throw new Error(`Gemini API returned ${response.status}: ${errData?.error?.message || 'Unknown error'}`);
-    }
+--- TRANSCRIPT WITH TIMESTAMPS ---
+${formattedTranscript}
+--- END TRANSCRIPT ---
 
-    const data = await response.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+Total video duration: ${totalDuration} seconds.
 
-    if (!rawText) {
-      console.error('No text in Gemini response');
-      return null;
-    }
+IMPORTANT FINAL REMINDER: You MUST return AT LEAST 3 clips, ideally 4-5. Each clip 6-12 seconds. Return ONLY a JSON array. Do NOT return just 1 or 2 clips — that is UNACCEPTABLE. Find AT LEAST 3 interesting moments spread across the entire video.`;
 
+    const rawText = await callGeminiWithFallback(apiKey, userPrompt, onLog);
     console.log('Gemini raw response:', rawText);
 
-    // Parse JSON from response (handle all possible formats)
+    // Parse JSON from response
     const clips = parseJsonFromResponse(rawText);
 
     if (!clips || !Array.isArray(clips) || clips.length === 0) {
@@ -162,9 +262,12 @@ export async function analyzeTranscript(transcript, apiKey) {
     return validClips.length > 0 ? validClips : null;
   } catch (err) {
     console.error('Gemini analysis failed:', err);
+    if (onLog) onLog(`⚠️ AI analysis error: ${err.message}`);
     return null;
   }
 }
+
+// ============ Helpers ============
 
 function formatTranscriptForGemini(transcript) {
   if (!transcript.chunks || transcript.chunks.length === 0) {
@@ -183,7 +286,6 @@ function formatTranscriptForGemini(transcript) {
 
     currentWords.push(word);
 
-    // Cut at sentence enders, or every ~10 words
     const isSentenceEnd = /[.!?]$/.test(word);
     const isLongEnough = currentWords.length >= 10;
     const isLast = i === transcript.chunks.length - 1;
@@ -201,7 +303,6 @@ function formatTranscriptForGemini(transcript) {
 }
 
 function parseJsonFromResponse(text) {
-  // Clean the text
   let cleaned = text.trim();
 
   // 1. Try parsing as-is
@@ -210,7 +311,7 @@ function parseJsonFromResponse(text) {
     return Array.isArray(parsed) ? parsed : null;
   } catch {}
 
-  // 2. Remove markdown code fences (```json ... ``` or ``` ... ```)
+  // 2. Remove markdown code fences
   cleaned = cleaned
     .replace(/^```(?:json)?\s*\n?/i, '')
     .replace(/\n?\s*```\s*$/i, '')
@@ -240,17 +341,17 @@ function parseJsonFromResponse(text) {
       return Array.isArray(parsed) ? parsed : null;
     } catch {}
 
-    // Try fixing common JSON issues (trailing commas, etc.)
+    // Try fixing trailing commas
     try {
       const fixed = bestMatch
-        .replace(/,\s*\]/g, ']')  // trailing comma before ]
-        .replace(/,\s*\}/g, '}'); // trailing comma before }
+        .replace(/,\s*\]/g, ']')
+        .replace(/,\s*\}/g, '}');
       const parsed = JSON.parse(fixed);
       return Array.isArray(parsed) ? parsed : null;
     } catch {}
   }
 
-  // 4. Last resort: try to find individual JSON objects
+  // 4. Last resort: find individual JSON objects
   const objectRegex = /\{[^{}]*"start_time"\s*:\s*[\d.]+[^{}]*\}/g;
   const objects = [];
   while ((match = objectRegex.exec(text)) !== null) {
