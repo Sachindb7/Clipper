@@ -43,56 +43,74 @@ What makes a clip VIRAL:
 - Unexpected plot twists in conversation
 - Even calm but profound/wise statements work
 
-═══════════════════════════════════════════
-HOOK TEXT — THIS IS THE MOST IMPORTANT PART
-═══════════════════════════════════════════
+══════════════════════════════════════════════════
+HOOK TEXT — THE SINGLE MOST IMPORTANT THING YOU DO
+══════════════════════════════════════════════════
 
-The hook text appears at the TOP of the reel. It's the FIRST thing people see. If the hook is boring, nobody watches. Your hooks must create an IRRESISTIBLE urge to keep watching.
+The hook text appears at TOP of the reel. It decides if people WATCH or SCROLL AWAY.
+A great hook doesn't just get clicks — it HITS A NERVE. It makes people FEEL something.
+It creates RETENTION (they watch till the end), CONNECTION (they like/share), and EMOTION (they remember it).
 
-HOOK PSYCHOLOGY — use these techniques:
-1. CURIOSITY GAP — hint at something without revealing it: "What he said next... 😳🔥"
-2. SUSPENSE / CLIFFHANGER — make them wait: "Watch till the end 👀💀"  
-3. SHOCK VALUE — imply something wild happened: "This shouldn't exist 🤯"
-4. INCOMPLETE THOUGHT — cut off mid-idea: "When he realized... 😱"
-5. BOLD CLAIM — challenge a belief: "Nobody's ready for this 🤫🔥"
-6. RELATABLE PAIN — tap into shared feelings: "Why does this hit so hard 😭💯"
-7. CONTROVERSY — stir debate: "He really said that?! 🫢🔥"
-8. FOMO — make them feel they're missing out: "You NEED to hear this 👂🔥"
+The hook "Streamers are humans too 💔" went viral because it didn't clickbait — it HIT A NERVE. 
+People connected emotionally. Streamers shared it. Chat members felt called out. THAT is a great hook.
 
-HOOK FORMAT RULES:
-- 3-7 words MAX (shorter = more powerful)
-- MUST include 2-3 relevant emojis
-- The hook should NOT describe what happens — it should TEASE it
-- Think: "If I read this hook while scrolling, would I STOP to watch?"
-- Hook must feel native to Instagram/TikTok culture
+════════════════════════════
+THE 5 HOOK STYLES — USE ALL OF THEM
+════════════════════════════
 
-EXCELLENT HOOK EXAMPLES (study these patterns):
-✅ "Wait for it... 👀🔥"
-✅ "What he said next 😳💀"
-✅ "Nobody was ready 🤯🔥"  
-✅ "This changes everything 😱💯"
-✅ "He wasn't supposed to say this 🤫😱"
-✅ "I can't believe this 💀😭"
-✅ "The ending tho... 👀🤯"
-✅ "You're not gonna believe this 😳🔥"
-✅ "This is why we can't have nice things 💀😂"
-✅ "bro really went there 🫢💀"
-✅ "Plot twist incoming 🔄😱"
-✅ "The truth nobody tells you 🤫💯"
-✅ "This hit different at 3am 😭🔥"
-✅ "POV: when reality hits 💀😂"
+Each clip MUST use a DIFFERENT hook style. Do NOT repeat the same style twice.
+Pick the style that MATCHES the clip's actual content/emotion:
 
-FORBIDDEN HOOKS (never use these boring patterns):
-❌ "[Person name] talks about [topic]"
-❌ "Discussion about [topic]"  
-❌ "[Person] explains [thing]"
-❌ Any hook that simply describes the clip content
-❌ Any hook longer than 7 words (excluding emojis)
+1. 💔 EMOTIONAL CONNECTION (makes people FEEL something deeply)
+   → Use when the clip has real emotion, vulnerability, frustration, or heart
+   → Examples: "Streamers are humans too 💔", "Nobody checks on the strong ones 😔💯", "This shouldn't hurt this much 💔😭"
+   → WHY IT WORKS: People share because they RELATE. They tag friends. They comment their own stories.
 
-REMEMBER: MINIMUM 3 CLIPS. SHORT clips (7-9 seconds) are ALWAYS better. Your hooks should make someone physically unable to scroll past.
+2. 👀 CURIOSITY / CLIFFHANGER (makes people NEED to see what happens)
+   → Use ONLY when the clip genuinely has a surprising moment, reveal, or unexpected turn
+   → Examples: "Watch what happens next 👀🔥", "Nobody expected this 😱", "The ending tho... 👀💀"
+   → ⚠️ NEVER use this style if the clip has NO actual payoff. Fake cliffhangers = instant scroll.
 
-Respond with ONLY a raw JSON array, NO markdown, NO code blocks, NO backticks:
-[{"start_time": 5.2, "end_time": 13.1, "hook_text": "What he said next 😳🔥", "reason": "Strong emotional reaction"}]`;
+3. 🔥 BOLD / CONTROVERSIAL (makes people DEBATE in comments)
+   → Use when someone says something spicy, a hot take, or an unpopular opinion
+   → Examples: "He really said that on stream 🫢🔥", "This take is TOO real 💯🔥", "Not everyone's gonna agree 🤷‍♂️🔥"
+   → WHY IT WORKS: Controversy = comments = algorithm pushes it to more people.
+
+4. 😂 RELATABLE / FUNNY (makes people tag their friends)
+   → Use when the clip has humor, a funny moment, or a universal experience everyone knows
+   → Examples: "We've ALL been here 😂💀", "Why is this so accurate 😭😂", "Every gamer knows this pain 🎮💀"
+   → WHY IT WORKS: People tag friends saying "this is literally you 😂"
+
+5. 🤯 HYPE / IMPRESSIVE (makes people say "yooo that's insane")
+   → Use when the clip has an amazing play, crazy fact, impressive skill, or mind-blowing moment
+   → Examples: "This is actually insane 🤯🔥", "How is this even possible 😱", "Nobody does it like this 👑🔥"
+   → WHY IT WORKS: People save the video, share in group chats.
+
+═════════════════════
+CRITICAL HOOK RULES
+═════════════════════
+
+1. MATCH the hook to the clip's REAL emotion. If clip is sad → emotional hook. If clip is funny → funny hook.
+2. Every clip gets a DIFFERENT hook style. If clip 1 is emotional, clip 2 must be different (curiosity, bold, etc.)
+3. 3-7 words MAX (excluding emojis). Shorter = more powerful.
+4. MUST include 2-3 relevant emojis that match the emotion.
+5. Don't just DESCRIBE what happens. Make people FEEL something.
+6. The hook should be something a REAL person would type, not a robot. Think Instagram comments, not news headlines.
+7. Don't repeat the exact words from the clip. Capture the FEELING, not the sentence.
+
+FORBIDDEN (instant fail):
+❌ Generic clickbait that doesn't match the content
+❌ "[Person name] talks about [topic]" — boring, descriptive
+❌ "Discussion about [topic]" — sounds like a podcast title
+❌ Fake cliffhangers on clips with no payoff
+❌ Same hook style on every clip
+
+REMEMBER: MINIMUM 3 CLIPS, ideally 4-5. SHORT clips (7-9 seconds). Each hook must be a DIFFERENT style that matches the clip's actual emotion.
+
+Respond with ONLY a raw JSON array, NO markdown, NO code blocks, NO backticks.
+In "hook_style" field, specify which of the 5 styles you used (emotional/curiosity/bold/relatable/hype):
+[{"start_time": 5.2, "end_time": 13.1, "hook_text": "Streamers are humans too 💔", "hook_style": "emotional", "reason": "Vulnerable moment about hate in chat"}]`;
+
 
 // ============ Retry Helpers ============
 
