@@ -1,20 +1,34 @@
 /**
  * transcriber.js — Whisper-based audio transcription using transformers.js v3
- * Uses onnx-community/whisper-base.en for better accuracy,
- * with chunk-level timestamps + improved word-level approximation.
+ * Uses onnx-community/whisper-base (multilingual) for English, Hindi & Hinglish support.
+ * Chunk-level timestamps + word-level approximation.
  */
 import { pipeline } from '@huggingface/transformers';
 import { extractAudioForWhisper } from './audio-extractor.js';
 
 let transcriber = null;
+let loadedModelId = null;
 
 /**
- * Transcribe a video file using Whisper (base.en model — 2x more accurate than tiny)
+ * Get the right model ID based on language
+ * English uses .en model (faster, more accurate for pure English)
+ * Hindi/Hinglish use multilingual model
+ */
+function getModelId(language) {
+  if (language === 'hi' || language === 'hinglish') {
+    return 'onnx-community/whisper-base';
+  }
+  return 'onnx-community/whisper-base.en';
+}
+
+/**
+ * Transcribe a video file using Whisper
  * @param {File} videoFile
  * @param {Function} onProgress - (stage, percent, message)
+ * @param {string} language - 'en', 'hi', or 'hinglish'
  * @returns {Promise<{ text: string, chunks: Array<{ text: string, timestamp: [number, number] }> }>}
  */
-export async function transcribeVideo(videoFile, onProgress) {
+export async function transcribeVideo(videoFile, onProgress, language = 'en') {
   try {
     // Phase 1: Extract audio
     onProgress('extract', 0, 'Extracting audio from video...');
@@ -23,12 +37,16 @@ export async function transcribeVideo(videoFile, onProgress) {
     });
     onProgress('extract', 100, 'Audio extracted ✓');
 
-    // Phase 2: Load Whisper model (base.en = much better accuracy than tiny.en)
-    onProgress('model', 0, 'Loading Whisper AI model (first time may take a moment)...');
-    if (!transcriber) {
+    // Phase 2: Load Whisper model
+    const modelId = getModelId(language);
+    const langLabel = language === 'hi' ? 'Hindi' : language === 'hinglish' ? 'Hinglish' : 'English';
+    onProgress('model', 0, `Loading Whisper model (${langLabel})...`);
+
+    // Reload model if language changed (en vs multilingual)
+    if (!transcriber || loadedModelId !== modelId) {
       transcriber = await pipeline(
         'automatic-speech-recognition',
-        'onnx-community/whisper-base.en',
+        modelId,
         {
           dtype: 'fp32',
           device: 'wasm',
@@ -39,20 +57,33 @@ export async function transcribeVideo(videoFile, onProgress) {
           },
         }
       );
+      loadedModelId = modelId;
     }
     onProgress('model', 100, 'Whisper model loaded ✓');
 
     // Phase 3: Transcribe with chunk-level timestamps
-    // Note: ONNX Whisper models don't support word-level timestamps (no cross-attention)
-    // so we use chunk-level + approximate word timing from chunks
-    onProgress('transcribe', 0, 'Transcribing audio...');
+    onProgress('transcribe', 0, `Transcribing audio (${langLabel})...`);
     const audioUrl = URL.createObjectURL(audioBlob);
 
-    const result = await transcriber(audioUrl, {
+    // Build transcription options
+    const transcribeOptions = {
       return_timestamps: true,
       chunk_length_s: 30,
       stride_length_s: 5,
-    });
+    };
+
+    // Set language for multilingual model
+    if (language === 'hi') {
+      transcribeOptions.language = 'hindi';
+      transcribeOptions.task = 'transcribe';
+    } else if (language === 'hinglish') {
+      // For Hinglish: use Hindi language setting — Whisper handles English words within Hindi
+      transcribeOptions.language = 'hindi';
+      transcribeOptions.task = 'transcribe';
+    }
+    // For 'en' with .en model, no language param needed
+
+    const result = await transcriber(audioUrl, transcribeOptions);
 
     URL.revokeObjectURL(audioUrl);
 
@@ -77,8 +108,6 @@ export async function transcribeVideo(videoFile, onProgress) {
 /**
  * Convert chunk-level timestamps to approximate word-level timestamps.
  * Distributes time proportionally by character count with small gaps between words.
- * @param {Array<{ text: string, timestamp: [number, number] }>} chunks
- * @returns {Array<{ text: string, timestamp: [number, number] }>}
  */
 function chunksToWords(chunks) {
   const wordChunks = [];
@@ -94,9 +123,7 @@ function chunksToWords(chunks) {
     const words = text.split(/\s+/).filter(Boolean);
     if (words.length === 0) continue;
 
-    // Distribute time proportionally by word length (longer words ≈ more time)
     const totalChars = words.reduce((sum, w) => sum + Math.max(w.length, 1), 0);
-    // Small gap between words (5% of average word duration)
     const avgWordDuration = duration / words.length;
     const wordGap = Math.min(0.05, avgWordDuration * 0.05);
     const usableDuration = duration - (wordGap * (words.length - 1));

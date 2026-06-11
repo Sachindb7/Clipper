@@ -25,6 +25,7 @@ const state = {
   logoImage: null,
   noLogo: false,
   hookStyle: 'single', // 'single', 'multi', 'both'
+  language: 'en', // 'en', 'hi', 'hinglish'
 };
 
 // ============ DOM refs ============
@@ -151,6 +152,18 @@ function init() {
     });
   }
 
+  // Language toggle
+  const langToggle = $('language-toggle');
+  if (langToggle) {
+    langToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.hook-btn');
+      if (!btn) return;
+      langToggle.querySelectorAll('.hook-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.language = btn.dataset.lang;
+    });
+  }
+
   // Init upload
   initUpload(onVideoSelected);
 
@@ -195,7 +208,7 @@ async function onVideoSelected({ file, duration }) {
       setStepProgress('transcribe', percent);
       setStepStatus('transcribe', msg);
       log(`   ${msg}`);
-    });
+    }, state.language);
     completeStep('transcribe');
     log(`✅ Transcription complete: ${state.transcript.chunks.length} words detected`, 'success');
 
