@@ -85,8 +85,8 @@ export function initUpload(onFileSelected) {
         alert('Video too short. Minimum 10 seconds.');
         return;
       }
-      if (metadata.duration > 1200) {
-        alert('Video too long. Maximum 20 minutes.');
+      if (metadata.duration > 300) {
+        alert('Video too long. Maximum 5 minutes.');
         return;
       }
 
