@@ -125,7 +125,10 @@ function isRetryableError(error) {
     message.includes('high demand') ||
     message.includes('rate limit') ||
     message.includes('quota') ||
-    message.includes('internal')
+    message.includes('internal') ||
+    message.includes('abort') ||
+    message.includes('timeout') ||
+    error?.name === 'AbortError'
   );
 }
 
@@ -152,9 +155,15 @@ async function callGeminiWithFallback(apiKey, userPrompt, onLog) {
         console.log(`🤖 Trying ${codename} (${attempt}/${RETRIES_PER_MODEL})`);
 
         const url = `${GEMINI_BASE_URL}/${model}:generateContent?key=${apiKey}`;
+
+        // 30s timeout so it doesn't hang forever
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             contents: [
               {
@@ -170,6 +179,8 @@ async function callGeminiWithFallback(apiKey, userPrompt, onLog) {
             },
           }),
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
