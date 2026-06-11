@@ -42,57 +42,26 @@ export async function transcribeVideo(videoFile, onProgress) {
     }
     onProgress('model', 100, 'Whisper model loaded ✓');
 
-    // Phase 3: Transcribe with word-level timestamps first, fall back to chunk-level
+    // Phase 3: Transcribe with chunk-level timestamps
+    // Note: ONNX Whisper models don't support word-level timestamps (no cross-attention)
+    // so we use chunk-level + approximate word timing from chunks
     onProgress('transcribe', 0, 'Transcribing audio...');
     const audioUrl = URL.createObjectURL(audioBlob);
 
-    let wordChunks;
-
-    // Try word-level timestamps first (most accurate)
-    try {
-      const result = await transcriber(audioUrl, {
-        return_timestamps: 'word',
-        chunk_length_s: 30,
-        stride_length_s: 5,
-      });
-
-      // Check if we got proper word-level timestamps
-      if (result.chunks && result.chunks.length > 0 && result.chunks[0].timestamp) {
-        wordChunks = result.chunks
-          .filter(c => c.text && c.text.trim())
-          .map(c => ({
-            text: c.text.trim(),
-            timestamp: [
-              Math.round((c.timestamp[0] ?? 0) * 100) / 100,
-              Math.round((c.timestamp[1] ?? 0) * 100) / 100,
-            ],
-          }));
-
-        if (wordChunks.length > 0) {
-          onProgress('transcribe', 80, `Word-level timestamps ✓ (${wordChunks.length} words)`);
-        }
-      }
-    } catch (wordErr) {
-      console.warn('Word-level timestamps not available, falling back to chunk-level:', wordErr.message);
-    }
-
-    // Fallback: chunk-level timestamps with word approximation
-    if (!wordChunks || wordChunks.length === 0) {
-      onProgress('transcribe', 40, 'Using chunk-level timestamps...');
-      const result = await transcriber(audioUrl, {
-        return_timestamps: true,
-        chunk_length_s: 30,
-        stride_length_s: 5,
-      });
-
-      wordChunks = chunksToWords(result.chunks || []);
-    }
+    const result = await transcriber(audioUrl, {
+      return_timestamps: true,
+      chunk_length_s: 30,
+      stride_length_s: 5,
+    });
 
     URL.revokeObjectURL(audioUrl);
 
+    // Convert chunk-level to word-level approximation
+    onProgress('transcribe', 80, 'Processing word timestamps...');
+    const wordChunks = chunksToWords(result.chunks || []);
+
     onProgress('transcribe', 100, `Transcription complete ✓ (${wordChunks.length} words)`);
 
-    // Build full text
     const fullText = wordChunks.map(c => c.text).join(' ');
 
     return {
